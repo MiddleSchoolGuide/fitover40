@@ -4,7 +4,7 @@ submission by implementing everything in the checklist below.
 
 === APP IDENTITY ===
 - App name: FitOver40
-- Package name: com.yourname.fitover40
+- Package name: com.tonytrim.fitover40
 - Version: 1.0.0 (versionCode: 1, versionName: "1.0.0")
 - Target audience: Adults 40 and older
 - Category: Health & Fitness
@@ -110,7 +110,7 @@ Generate a complete plain-English privacy policy text covering:
   no data sent to servers, no analytics, no ads
 - Data deletion: user can clear all data from within the app
   (add a "Clear All Data" option in Settings screen)
-- Contact email placeholder: privacy@yourname.com
+- Contact email placeholder: privacy@tonytrim.com
 - Effective date: [today's date]
 
 Also create a PrivacyPolicyScreen.kt Composable that:

@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "FitOver40",
+    "slug": "fitover40-crossplatform",
+    "version": "1.0.0",
+    "scheme": "fitover40",
+    "orientation": "portrait",
+    "newArchEnabled": true,
+    "icon": "./assets/images/icon.png",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#00897B"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tonytrim.fitover40"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#00897B"
+      },
+      "package": "com.tonytrim.fitover40"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://fitover40.com"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

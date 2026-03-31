@@ -1,0 +1,6 @@
+# Keystore credentials for production release
+# DO NOT COMMIT THIS FILE TO VERSION CONTROL
+storeFile=fitover40.jks
+storePassword=your_keystore_password
+keyAlias=fitover40
+keyPassword=your_key_password
