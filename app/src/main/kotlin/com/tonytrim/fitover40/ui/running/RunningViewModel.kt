@@ -204,7 +204,20 @@ class RunningViewModel(
     fun onOutdoorLocation(point: GeoPoint, accuracyMeters: Float) {
         val state = _uiState.value
         if (state.trackingMode != RunningTrackingMode.Outdoor || state.isPaused || state.phase == WorkoutPhase.FINISHED) return
-        if (accuracyMeters > 35f) return
+
+        // On Fire Tablets and devices without dedicated GPS, accuracy can often be > 35m initially
+        // We'll relax this to 65m to show some progress on the map, but still update the status for all points
+        val isAccuracyAcceptable = accuracyMeters <= 65f
+
+        if (!isAccuracyAcceptable) {
+            _uiState.update {
+                it.copy(
+                    trackingStatus = "Poor GPS accuracy: ${accuracyMeters.toInt()}m (need < 65m)",
+                    hasLocationFix = true // We have a fix, it's just not good enough yet
+                )
+            }
+            return
+        }
 
         val lastPoint = state.routePoints.lastOrNull()
         val segmentDistance = if (lastPoint == null) {
@@ -221,7 +234,7 @@ class RunningViewModel(
             }[0]
         }
 
-        val acceptedSegment = if (lastPoint == null || segmentDistance in 1f..100f) segmentDistance.toDouble() else 0.0
+        val acceptedSegment = if (lastPoint == null || segmentDistance in 0.5f..150f) segmentDistance.toDouble() else 0.0
         val shouldAppend = lastPoint == null || acceptedSegment > 0.0
 
         _uiState.update {
@@ -229,7 +242,7 @@ class RunningViewModel(
                 distanceMeters = it.distanceMeters + acceptedSegment,
                 routePoints = if (shouldAppend) it.routePoints + point else it.routePoints,
                 currentLocationLabel = "${"%.5f".format(Locale.US, point.latitude)}, ${"%.5f".format(Locale.US, point.longitude)}",
-                trackingStatus = "GPS accuracy ${accuracyMeters.toInt()} m",
+                trackingStatus = "GPS accuracy: ${accuracyMeters.toInt()}m",
                 hasLocationFix = true
             )
         }

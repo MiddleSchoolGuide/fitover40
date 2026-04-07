@@ -8,7 +8,8 @@ keytool -genkey -v -keystore fitover40.jks -alias fitover40 -keyalg RSA -keysize
 
 ### Next Steps:
 1.  Copy `local.properties.template` to `local.properties` (if not already existing or update it).
-2.  Fill in the `storePassword`, `keyAlias`, and `keyPassword` in `local.properties`.
-3.  Ensure `fitover40.jks` is placed in the project root or adjust `storeFile` in `local.properties`.
+2.  Set `authBaseUrl` in `local.properties` to your backend base URL, for example `https://your-api.example.com`.
+3.  Fill in the `storePassword`, `keyAlias`, and `keyPassword` in `local.properties`.
+4.  Ensure `fitover40.jks` is placed in the project root or adjust `storeFile` in `local.properties`.
 
 **CRITICAL: Never share or commit your keystore or `local.properties` files.**

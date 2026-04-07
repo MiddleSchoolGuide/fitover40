@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +20,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,34 +44,80 @@ fun HistoryScreen(
         uiState.strengthWorkouts.map { Triple("STRENGTH", it.id, it.date) })
         .sortedByDescending { it.third }
 
-    LazyColumn(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .navigationBarsPadding(),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                HistoryHeroCard(
+                    weeklyCount = uiState.weeklyCount,
+                    streakCount = uiState.streakCount
+                )
+            }
+            item { StatsDashboard(uiState) }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Recent workouts",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Every completed run and strength session is saved here.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            if (allWorkouts.isEmpty()) {
+                item { EmptyHistoryCard() }
+            } else {
+                items(allWorkouts) { (type, id, _) ->
+                    WorkoutHistoryCard(
+                        type = type,
+                        runWorkout = uiState.runWorkouts.firstOrNull { it.id == id },
+                        strengthWorkout = uiState.strengthWorkouts.firstOrNull { it.id == id }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryHeroCard(
+    weeklyCount: Int,
+    streakCount: Int
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = MaterialTheme.shapes.extraLarge
     ) {
-        item {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Text(
                 text = "Progress",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
-        }
-        item { StatsDashboard(uiState) }
-        item {
             Text(
-                text = "Recent workouts",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                text = "Track consistency first. Volume follows once the routine holds.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-        if (allWorkouts.isEmpty()) {
-            item { EmptyHistoryCard() }
-        } else {
-            items(allWorkouts) { (type, id, _) ->
-                WorkoutHistoryCard(
-                    type = type,
-                    runWorkout = uiState.runWorkouts.firstOrNull { it.id == id },
-                    strengthWorkout = uiState.strengthWorkouts.firstOrNull { it.id == id }
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AssistChip(onClick = {}, enabled = false, label = { Text("$weeklyCount workouts this week") })
+                AssistChip(onClick = {}, enabled = false, label = { Text("$streakCount day streak") })
             }
         }
     }
@@ -79,7 +128,7 @@ fun StatsDashboard(state: HistoryUiState) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        shape = MaterialTheme.shapes.large
+        shape = MaterialTheme.shapes.extraLarge
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -104,7 +153,7 @@ fun StatsDashboard(state: HistoryUiState) {
                 }
                 Surface(
                     color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = MaterialTheme.shapes.medium
+                    shape = MaterialTheme.shapes.large
                 ) {
                     Text(
                         text = "${state.streakCount} day streak",
@@ -131,7 +180,7 @@ fun StatItem(label: String, value: String, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier,
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
-        shape = MaterialTheme.shapes.medium
+        shape = MaterialTheme.shapes.large
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -159,7 +208,7 @@ fun WorkoutHistoryCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
@@ -216,7 +265,7 @@ private fun formatDistance(distanceMeters: Double): String =
 private fun EmptyHistoryCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
         )

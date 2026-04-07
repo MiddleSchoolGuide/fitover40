@@ -1,6 +1,7 @@
 package com.tonytrim.fitover40.data.repository
 
 import com.tonytrim.fitover40.data.db.*
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 
 class WorkoutRepository(private val workoutDao: WorkoutDao) {
@@ -26,9 +27,23 @@ class WorkoutRepository(private val workoutDao: WorkoutDao) {
 
     fun getStreakCount(): Flow<Int> = workoutDao.getStreakCount()
 
+    suspend fun exportSyncSnapshot(): WorkoutSyncSnapshot {
+        return WorkoutSyncSnapshot(
+            runWorkouts = workoutDao.getAllRunWorkouts().first(),
+            strengthWorkouts = workoutDao.getAllStrengthWorkouts().first(),
+            exerciseSets = workoutDao.getAllExerciseSets()
+        )
+    }
+
     suspend fun clearAllHistory() {
         workoutDao.clearRunWorkouts()
         workoutDao.clearStrengthWorkouts()
         workoutDao.clearExerciseSets()
     }
 }
+
+data class WorkoutSyncSnapshot(
+    val runWorkouts: List<RunWorkout>,
+    val strengthWorkouts: List<StrengthWorkout>,
+    val exerciseSets: List<ExerciseSet>
+)

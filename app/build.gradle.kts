@@ -13,6 +13,14 @@ if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
 
+val authBaseUrl = localProperties.getProperty("authBaseUrl")
+    ?: localProperties.getProperty("AUTH_BASE_URL")
+    ?: localProperties.getProperty("fitover40.authBaseUrl")
+    ?: System.getenv("FITOVER40_AUTH_BASE_URL")
+    ?: System.getenv("AUTH_BASE_URL")
+    ?: ""
+val debugAuthBaseUrl = authBaseUrl.ifBlank { "http://10.0.2.2:3000" }
+
 android {
     namespace = "com.tonytrim.fitover40"
     compileSdk = 35
@@ -40,10 +48,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "AUTH_BASE_URL", "\"$debugAuthBaseUrl\"")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
+            buildConfigField("String", "AUTH_BASE_URL", "\"$authBaseUrl\"")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

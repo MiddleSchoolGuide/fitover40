@@ -48,14 +48,14 @@ fun PrivacyPolicyScreen(onBack: () -> Unit) {
             item {
                 PolicySection(
                     title = "Data Collection",
-                    content = "Your workout history, plans, and training levels are stored LOCALLY only on your device. We do not transmit this data to any servers."
+                    content = "Your workout history, plans, and training levels are stored on-device. If you sign in, your email address and authentication session are also stored locally so the app can reconnect to your backend."
                 )
             }
 
             item {
                 PolicySection(
                     title = "What is NOT Collected",
-                    content = "FitOver40 does not require an account. We do not collect personal info, email addresses, or location data for tracking purposes beyond active workout sessions. There are no ads, no analytics, and no third-party data sharing."
+                    content = "FitOver40 does not include ads or third-party analytics. Outdoor location is used for active workout tracking only. Account data is only sent to your configured backend for authentication."
                 )
             }
 

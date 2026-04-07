@@ -3,6 +3,7 @@ package com.tonytrim.fitover40.ui.components
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
@@ -16,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -30,7 +32,8 @@ fun BigTimer(
     Text(
         text = timeText,
         style = MaterialTheme.typography.displayLarge,
-        fontWeight = FontWeight.Black,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-1).sp,
         textAlign = TextAlign.Center,
         modifier = modifier.fillMaxWidth()
     )
@@ -48,8 +51,8 @@ fun PhaseLabel(
         label = {
             Text(
                 text = phase,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium
             )
         },
         colors = SuggestionChipDefaults.suggestionChipColors(
@@ -58,6 +61,7 @@ fun PhaseLabel(
             disabledContainerColor = color,
             disabledLabelColor = Color.White
         ),
+        border = null,
         modifier = modifier
     )
 }
@@ -73,8 +77,8 @@ fun RestTimer(
     ) {
         Text(
             text = "REST",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
@@ -98,14 +102,15 @@ fun AccessibleButton(
         enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp),
+            .heightIn(min = 50.dp),
         colors = colors,
-        shape = MaterialTheme.shapes.medium
+        shape = RoundedCornerShape(25.dp),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp)
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }

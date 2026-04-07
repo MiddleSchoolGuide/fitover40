@@ -29,7 +29,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -153,15 +153,22 @@ fun RunningScreen(
                 }
                 val listener = locationListener
                 if (locationManager != null && listener != null) {
-                    runCatching {
-                        if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 3f, listener, Looper.getMainLooper())
+                    val isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+                    val isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+
+                    if (!isGpsEnabled && !isNetworkEnabled) {
+                        viewModel.updateTrackingStatus("Location services (GPS/Network) are disabled. Check device settings.")
+                    } else {
+                        runCatching {
+                            if (isGpsEnabled) {
+                                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 3f, listener, Looper.getMainLooper())
+                            }
+                            if (isNetworkEnabled) {
+                                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2000L, 5f, listener, Looper.getMainLooper())
+                            }
+                        }.onFailure {
+                            viewModel.updateTrackingStatus("Unable to start location updates on this device.")
                         }
-                        if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2000L, 5f, listener, Looper.getMainLooper())
-                        }
-                    }.onFailure {
-                        viewModel.updateTrackingStatus("Unable to start location updates on this device.")
                     }
                 }
             }
@@ -190,48 +197,35 @@ fun RunningScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Running", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                        Text(uiState.planName, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    AssistChip(onClick = {}, enabled = false, label = { Text(if (uiState.isPaused) "Paused" else "Active") })
-                }
+                IOSHeroHeader(
+                    title = "Running",
+                    subtitle = uiState.planName,
+                    status = if (uiState.isPaused) "Paused" else "Active"
+                )
             }
 
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    RunningTrackingMode.entries.forEach { mode ->
-                        AssistChip(
-                            onClick = {
-                                viewModel.setTrackingMode(mode)
-                                when (mode) {
-                                    RunningTrackingMode.Outdoor -> if (!hasLocationPermission) {
-                                        permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-                                    }
-                                    RunningTrackingMode.Treadmill -> if (!hasActivityPermission) {
-                                        permissionLauncher.launch(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION))
-                                    }
-                                }
-                            },
-                            label = { Text(mode.displayName) },
-                            modifier = Modifier.weight(1f),
-                            enabled = uiState.trackingMode != mode
-                        )
+                IOSSegmentedControl(
+                    options = RunningTrackingMode.entries,
+                    selected = uiState.trackingMode,
+                    label = { it.displayName },
+                    onSelected = { mode ->
+                        viewModel.setTrackingMode(mode)
+                        when (mode) {
+                            RunningTrackingMode.Outdoor -> if (!hasLocationPermission) {
+                                permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                            }
+                            RunningTrackingMode.Treadmill -> if (!hasActivityPermission) {
+                                permissionLauncher.launch(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION))
+                            }
+                        }
                     }
-                }
+                )
             }
 
             item {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large
                 ) {
@@ -239,8 +233,8 @@ fun RunningScreen(
                         modifier = Modifier.padding(18.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(uiState.trainingLevel.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text(uiState.planSummary, style = MaterialTheme.typography.bodyLarge)
+                        Text(uiState.trainingLevel.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text(uiState.planSummary, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -266,7 +260,12 @@ fun RunningScreen(
                             }
                         )
                         BigTimer(secondsRemaining = uiState.secondsRemaining)
-                        LinearProgressIndicator(progress = uiState.workoutProgress.coerceIn(0f, 1f), modifier = Modifier.fillMaxWidth())
+                        LinearProgressIndicator(
+                            progress = uiState.workoutProgress.coerceIn(0f, 1f),
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
                         Text(
                             text = if (uiState.phase == WorkoutPhase.FINISHED) "Session complete" else "Set ${uiState.currentSet} of ${uiState.totalSets}",
                             style = MaterialTheme.typography.titleMedium
@@ -315,7 +314,11 @@ fun RunningScreen(
                             }
                         )
                     } else {
-                        RouteMapCard(routePoints = uiState.routePoints, currentLocationLabel = uiState.currentLocationLabel)
+                        RouteMapCard(
+                            routePoints = uiState.routePoints,
+                            currentLocationLabel = uiState.currentLocationLabel,
+                            hasLocationFix = uiState.hasLocationFix
+                        )
                     }
                 }
             } else {
@@ -340,7 +343,7 @@ fun RunningScreen(
 
             item {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large
                 ) {
@@ -363,17 +366,18 @@ fun RunningScreen(
                         onClick = { viewModel.startPauseWorkout() },
                         text = if (uiState.isPaused) "Resume Workout" else "Pause Workout",
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (uiState.isPaused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     )
                     OutlinedButton(
                         onClick = { viewModel.resetWorkout() },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 56.dp),
-                        shape = MaterialTheme.shapes.medium
+                            .heightIn(min = 50.dp),
+                        shape = RoundedCornerShape(25.dp)
                     ) {
-                        Text("Reset Session", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text("Reset Session", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                     }
                     if (uiState.phase == WorkoutPhase.FINISHED) {
                         Text(
@@ -382,6 +386,72 @@ fun RunningScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IOSHeroHeader(
+    title: String,
+    subtitle: String,
+    status: String
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.displayLarge, fontWeight = FontWeight.Bold)
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            AssistChip(onClick = {}, enabled = false, label = { Text(status) })
+        }
+    }
+}
+
+@Composable
+private fun <T> IOSSegmentedControl(
+    options: List<T>,
+    selected: T,
+    label: (T) -> String,
+    onSelected: (T) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            options.forEach { option ->
+                val isSelected = option == selected
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { if (!isSelected) onSelected(option) },
+                    color = if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent,
+                    shape = RoundedCornerShape(10.dp),
+                    tonalElevation = if (isSelected) 1.dp else 0.dp
+                ) {
+                    Text(
+                        text = label(option),
+                        modifier = Modifier.padding(vertical = 10.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
                 }
             }
         }
@@ -401,7 +471,7 @@ private fun TreadmillTrackingCard(
     onDisconnect: () -> Unit
 ) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large
     ) {
@@ -460,7 +530,7 @@ private fun TreadmillDeviceRow(
     onConnect: () -> Unit
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+        color = MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.medium,
         modifier = Modifier
             .fillMaxWidth()
@@ -477,8 +547,8 @@ private fun TreadmillDeviceRow(
                 Text(device.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(device.address, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {
-                Text("Connect", modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(16.dp)) {
+                Text("Connect", modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -494,7 +564,7 @@ private fun PermissionCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -512,7 +582,7 @@ private fun FtmsDiagnosticsCard(uiState: RunningUiState) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -557,8 +627,15 @@ private fun FtmsDiagnosticsCard(uiState: RunningUiState) {
 @Composable
 private fun RouteMapCard(
     routePoints: List<GeoPoint>,
-    currentLocationLabel: String
+    currentLocationLabel: String,
+    hasLocationFix: Boolean
 ) {
+    val mapBackground = MaterialTheme.colorScheme.surfaceVariant
+    val routeColor = MaterialTheme.colorScheme.primary
+    val startColor = MaterialTheme.colorScheme.secondary
+    val endColor = MaterialTheme.colorScheme.tertiary
+    val placeholderColor = MaterialTheme.colorScheme.outline
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.large,
@@ -574,8 +651,25 @@ private fun RouteMapCard(
                     .fillMaxWidth()
                     .height(220.dp)
             ) {
-                drawRoundRect(color = Color(0xFFE2F1E5), size = size)
-                if (routePoints.size > 1) {
+                drawRoundRect(color = mapBackground, size = size)
+                if (routePoints.isEmpty()) {
+                    drawCircle(
+                        color = if (hasLocationFix) endColor else placeholderColor,
+                        radius = 16f,
+                        center = Offset(size.width / 2f, size.height / 2f)
+                    )
+                } else if (routePoints.size == 1) {
+                    drawCircle(
+                        color = endColor,
+                        radius = 14f,
+                        center = Offset(size.width / 2f, size.height / 2f)
+                    )
+                    drawCircle(
+                        color = endColor.copy(alpha = 0.22f),
+                        radius = 40f,
+                        center = Offset(size.width / 2f, size.height / 2f)
+                    )
+                } else {
                     val minLat = routePoints.minOf { it.latitude }
                     val maxLat = routePoints.maxOf { it.latitude }
                     val minLon = routePoints.minOf { it.longitude }
@@ -589,18 +683,27 @@ private fun RouteMapCard(
                         val y = (size.height - (((point.latitude - minLat) / latRange) * (size.height * 0.82f) + size.height * 0.09f)).toFloat()
                         if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
                     }
-                    drawPath(path = path, color = Color(0xFF2D6A4F), style = Stroke(width = 10f, cap = StrokeCap.Round))
+                    drawPath(path = path, color = routeColor, style = Stroke(width = 10f, cap = StrokeCap.Round))
 
                     fun toOffset(point: GeoPoint): Offset {
                         val x = (((point.longitude - minLon) / lonRange) * (size.width * 0.82f) + size.width * 0.09f).toFloat()
                         val y = (size.height - (((point.latitude - minLat) / latRange) * (size.height * 0.82f) + size.height * 0.09f)).toFloat()
                         return Offset(x, y)
                     }
-                    drawCircle(Color(0xFF465A91), radius = 12f, center = toOffset(routePoints.first()))
-                    drawCircle(Color(0xFFC75B39), radius = 14f, center = toOffset(routePoints.last()))
+                    drawCircle(startColor, radius = 12f, center = toOffset(routePoints.first()))
+                    drawCircle(endColor, radius = 14f, center = toOffset(routePoints.last()))
                 }
             }
-            Text(currentLocationLabel, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text = when {
+                    routePoints.size > 1 -> currentLocationLabel
+                    routePoints.size == 1 -> "Location locked. Plotting your route from the first GPS point."
+                    hasLocationFix -> "Location locked. Waiting for the first accurate route point to draw the map."
+                    else -> currentLocationLabel
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -610,14 +713,14 @@ private fun MetricCard(title: String, value: String, modifier: Modifier = Modifi
     Card(
         modifier = modifier,
         shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         }
     }
 }

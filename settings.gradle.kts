@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "FitOver40"
 include(":app")
+include(":local-auth-server")

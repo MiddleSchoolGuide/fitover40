@@ -1,5 +1,6 @@
 # Keystore credentials for production release
 # DO NOT COMMIT THIS FILE TO VERSION CONTROL
+authBaseUrl=https://your-api.example.com
 storeFile=fitover40.jks
 storePassword=your_keystore_password
 keyAlias=fitover40
