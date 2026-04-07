@@ -43,6 +43,7 @@ authBaseUrl=http://10.0.2.2:3000
 ## Railway
 
 Railway will provide `PORT` automatically. This service now reads it from the environment.
+For Railway, prefer deploying with the repo-root [Dockerfile](C:\Users\sidep\IdeaProjects\FitOver40\Dockerfile) so the platform builds only `local-auth-server` and never touches the Android module.
 
 Set these variables on the Railway service:
 
@@ -51,19 +52,18 @@ Set these variables on the Railway service:
 
 If your Railway Postgres service is attached correctly, Railway usually injects `DATABASE_URL` for you. The service will create its own tables on startup.
 
-Recommended Railway start command:
+Recommended Railway deploy mode:
+
+- Dockerfile
+
+If you stay on Railpack instead of Dockerfile, override both commands explicitly:
 
 ```text
-./gradlew :local-auth-server:run
+Build command: ./gradlew :local-auth-server:build
+Start command: ./gradlew :local-auth-server:run
 ```
 
-Recommended Railway build command:
-
-```text
-./gradlew :local-auth-server:build
-```
-
-`FITOVER40_BACKEND_ONLY=true` tells Gradle not to include the Android `:app` module during Railway builds, which avoids the Android SDK requirement in the backend service.
+`FITOVER40_BACKEND_ONLY=true` tells Gradle not to include the Android `:app` module during backend-only builds, which avoids the Android SDK requirement.
 
 Recommended health check path:
 
