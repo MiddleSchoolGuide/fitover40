@@ -15,5 +15,13 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "FitOver40"
-include(":app")
+val backendOnly = providers.environmentVariable("FITOVER40_BACKEND_ONLY")
+    .orElse(providers.environmentVariable("RAILWAY_BACKEND_ONLY"))
+    .orElse("false")
+    .map { it.equals("true", ignoreCase = true) }
+    .get()
+
+if (!backendOnly) {
+    include(":app")
+}
 include(":local-auth-server")

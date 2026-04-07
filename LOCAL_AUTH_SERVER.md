@@ -47,6 +47,7 @@ Railway will provide `PORT` automatically. This service now reads it from the en
 Set these variables on the Railway service:
 
 - `DATABASE_URL`
+- `FITOVER40_BACKEND_ONLY=true`
 
 If your Railway Postgres service is attached correctly, Railway usually injects `DATABASE_URL` for you. The service will create its own tables on startup.
 
@@ -55,6 +56,14 @@ Recommended Railway start command:
 ```text
 ./gradlew :local-auth-server:run
 ```
+
+Recommended Railway build command:
+
+```text
+./gradlew :local-auth-server:build
+```
+
+`FITOVER40_BACKEND_ONLY=true` tells Gradle not to include the Android `:app` module during Railway builds, which avoids the Android SDK requirement in the backend service.
 
 Recommended health check path:
 
