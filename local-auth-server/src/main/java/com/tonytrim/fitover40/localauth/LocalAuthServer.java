@@ -58,13 +58,26 @@ public final class LocalAuthServer {
     private static Storage createStorage() throws SQLException {
         String databaseUrl = trimToNull(System.getenv("DATABASE_URL"));
         if (databaseUrl != null) {
-            PostgresStorage postgresStorage = new PostgresStorage(databaseUrl);
+            PostgresStorage postgresStorage = new PostgresStorage(toJdbcUrl(databaseUrl));
             postgresStorage.initialize();
             System.out.println("Using PostgreSQL storage.");
             return postgresStorage;
         }
         System.out.println("DATABASE_URL is not set. Falling back to in-memory storage.");
         return new InMemoryStorage();
+    }
+
+    private static String toJdbcUrl(String databaseUrl) {
+        if (databaseUrl.startsWith("jdbc:")) {
+            return databaseUrl;
+        }
+        if (databaseUrl.startsWith("postgresql://")) {
+            return "jdbc:" + databaseUrl;
+        }
+        if (databaseUrl.startsWith("postgres://")) {
+            return "jdbc:postgresql://" + databaseUrl.substring("postgres://".length());
+        }
+        throw new IllegalStateException("Unsupported DATABASE_URL format. Expected postgres:// or postgresql://.");
     }
 
     private static int parsePort(String portValue) {
