@@ -3,6 +3,7 @@ package com.tonytrim.fitover40.data.auth
 import com.tonytrim.fitover40.data.pref.AuthSession
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.io.IOException
 import java.io.InputStreamReader
 import java.net.ConnectException
 import java.net.HttpURLConnection
@@ -95,6 +96,12 @@ class AuthApi(private val baseUrl: String) {
         } catch (error: SocketTimeoutException) {
             throw IllegalStateException(
                 "Timed out calling $endpoint. Check that the backend is running and reachable from the emulator.",
+                error
+            )
+        } catch (error: IOException) {
+            throw IllegalStateException(
+                error.message?.takeIf { it.isNotBlank() }
+                    ?: "Network call to $endpoint failed.",
                 error
             )
         }
