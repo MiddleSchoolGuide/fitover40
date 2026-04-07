@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
@@ -22,6 +24,7 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -58,7 +61,8 @@ public final class LocalAuthServer {
     private static Storage createStorage() throws SQLException {
         String databaseUrl = trimToNull(System.getenv("DATABASE_URL"));
         if (databaseUrl != null) {
-            PostgresStorage postgresStorage = new PostgresStorage(toJdbcUrl(databaseUrl));
+            ParsedDatabaseUrl parsedDatabaseUrl = parseDatabaseUrl(databaseUrl);
+            PostgresStorage postgresStorage = new PostgresStorage(parsedDatabaseUrl.jdbcUrl(), parsedDatabaseUrl.properties());
             postgresStorage.initialize();
             System.out.println("Using PostgreSQL storage.");
             return postgresStorage;
@@ -67,17 +71,48 @@ public final class LocalAuthServer {
         return new InMemoryStorage();
     }
 
-    private static String toJdbcUrl(String databaseUrl) {
-        if (databaseUrl.startsWith("jdbc:")) {
-            return databaseUrl;
+    private static ParsedDatabaseUrl parseDatabaseUrl(String databaseUrl) {
+        String normalized = databaseUrl;
+        if (normalized.startsWith("jdbc:postgresql://")) {
+            normalized = normalized.substring("jdbc:".length());
+        } else if (normalized.startsWith("postgres://")) {
+            normalized = "postgresql://" + normalized.substring("postgres://".length());
+        } else if (!normalized.startsWith("postgresql://")) {
+            throw new IllegalStateException("Unsupported DATABASE_URL format. Expected postgres:// or postgresql://.");
         }
-        if (databaseUrl.startsWith("postgresql://")) {
-            return "jdbc:" + databaseUrl;
+
+        try {
+            URI uri = new URI(normalized);
+            String host = uri.getHost();
+            int port = uri.getPort() == -1 ? 5432 : uri.getPort();
+            String path = uri.getPath();
+            if (host == null || path == null || path.length() <= 1) {
+                throw new IllegalStateException("DATABASE_URL is missing host or database name.");
+            }
+
+            String userInfo = uri.getUserInfo();
+            if (userInfo == null || !userInfo.contains(":")) {
+                throw new IllegalStateException("DATABASE_URL is missing database credentials.");
+            }
+
+            String[] credentials = userInfo.split(":", 2);
+            Properties properties = new Properties();
+            properties.setProperty("user", credentials[0]);
+            properties.setProperty("password", credentials[1]);
+            if (uri.getQuery() != null && !uri.getQuery().isBlank()) {
+                for (String part : uri.getQuery().split("&")) {
+                    String[] keyValue = part.split("=", 2);
+                    if (keyValue.length == 2 && !keyValue[0].isBlank()) {
+                        properties.setProperty(keyValue[0], keyValue[1]);
+                    }
+                }
+            }
+
+            String jdbcUrl = "jdbc:postgresql://" + host + ":" + port + path;
+            return new ParsedDatabaseUrl(jdbcUrl, properties);
+        } catch (URISyntaxException error) {
+            throw new IllegalStateException("DATABASE_URL is not a valid URI.", error);
         }
-        if (databaseUrl.startsWith("postgres://")) {
-            return "jdbc:postgresql://" + databaseUrl.substring("postgres://".length());
-        }
-        throw new IllegalStateException("Unsupported DATABASE_URL format. Expected postgres:// or postgresql://.");
     }
 
     private static int parsePort(String portValue) {
@@ -453,10 +488,12 @@ public final class LocalAuthServer {
     }
 
     private static final class PostgresStorage implements Storage {
-        private final String databaseUrl;
+        private final String jdbcUrl;
+        private final Properties connectionProperties;
 
-        private PostgresStorage(String databaseUrl) {
-            this.databaseUrl = databaseUrl;
+        private PostgresStorage(String jdbcUrl, Properties connectionProperties) {
+            this.jdbcUrl = jdbcUrl;
+            this.connectionProperties = connectionProperties;
         }
 
         private void initialize() throws SQLException {
@@ -608,7 +645,7 @@ public final class LocalAuthServer {
         }
 
         private Connection openConnection() throws SQLException {
-            return DriverManager.getConnection(databaseUrl);
+            return DriverManager.getConnection(jdbcUrl, connectionProperties);
         }
 
         private static UserRecord mapUser(ResultSet resultSet) throws SQLException {
@@ -723,5 +760,8 @@ public final class LocalAuthServer {
             long accessExpiresAtEpochSeconds,
             long refreshExpiresAtEpochSeconds
     ) {
+    }
+
+    private record ParsedDatabaseUrl(String jdbcUrl, Properties properties) {
     }
 }
