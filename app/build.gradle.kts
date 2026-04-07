@@ -19,7 +19,7 @@ val authBaseUrl = localProperties.getProperty("authBaseUrl")
     ?: System.getenv("FITOVER40_AUTH_BASE_URL")
     ?: System.getenv("AUTH_BASE_URL")
     ?: ""
-val debugAuthBaseUrl = authBaseUrl.ifBlank { "http://10.0.2.2:3000" }
+val debugAuthBaseUrl = authBaseUrl.ifBlank { "https://fitover40-production.up.railway.app" }
 
 android {
     namespace = "com.tonytrim.fitover40"
