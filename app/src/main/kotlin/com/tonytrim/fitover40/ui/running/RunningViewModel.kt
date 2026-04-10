@@ -203,7 +203,7 @@ class RunningViewModel(
 
     fun onOutdoorLocation(point: GeoPoint, accuracyMeters: Float) {
         val state = _uiState.value
-        if (state.trackingMode != RunningTrackingMode.Outdoor || state.isPaused || state.phase == WorkoutPhase.FINISHED) return
+        if (state.trackingMode != RunningTrackingMode.Outdoor || state.phase == WorkoutPhase.FINISHED) return
 
         // On Fire Tablets and devices without dedicated GPS, accuracy can often be > 35m initially
         // We'll relax this to 65m to show some progress on the map, but still update the status for all points
@@ -234,8 +234,9 @@ class RunningViewModel(
             }[0]
         }
 
-        val acceptedSegment = if (lastPoint == null || segmentDistance in 0.5f..150f) segmentDistance.toDouble() else 0.0
-        val shouldAppend = lastPoint == null || acceptedSegment > 0.0
+        val isRecording = !state.isPaused
+        val acceptedSegment = if (isRecording && (lastPoint == null || segmentDistance in 0.5f..150f)) segmentDistance.toDouble() else 0.0
+        val shouldAppend = isRecording && (lastPoint == null || acceptedSegment > 0.0)
 
         _uiState.update {
             it.copy(
@@ -394,6 +395,7 @@ class RunningViewModel(
             isPaused = savedStateHandle.get<Boolean>("isPaused") ?: true,
             totalSecondsElapsed = savedStateHandle.get<Int>("totalSecondsElapsed") ?: 0,
             distanceMeters = savedStateHandle.get<Double>("distanceMeters") ?: 0.0,
+            routePoints = savedStateHandle.get<List<GeoPoint>>("routePoints") ?: emptyList(),
             treadmillSteps = savedStateHandle.get<Int>("treadmillSteps") ?: 0,
             connectedTreadmillName = savedStateHandle.get<String>("connectedTreadmillName"),
             ftmsSpeedKph = savedStateHandle.get<Double>("ftmsSpeedKph") ?: 0.0,
@@ -416,6 +418,7 @@ class RunningViewModel(
         savedStateHandle["totalSecondsElapsed"] = state.totalSecondsElapsed
         savedStateHandle["trackingMode"] = state.trackingMode
         savedStateHandle["distanceMeters"] = state.distanceMeters
+        savedStateHandle["routePoints"] = ArrayList(state.routePoints)
         savedStateHandle["treadmillSteps"] = state.treadmillSteps
         savedStateHandle["connectedTreadmillName"] = state.connectedTreadmillName
         savedStateHandle["ftmsSpeedKph"] = state.ftmsSpeedKph

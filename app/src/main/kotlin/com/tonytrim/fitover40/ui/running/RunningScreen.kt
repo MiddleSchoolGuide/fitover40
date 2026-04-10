@@ -1,6 +1,7 @@
 package com.tonytrim.fitover40.ui.running
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.hardware.Sensor
@@ -65,6 +66,7 @@ import com.tonytrim.fitover40.ui.components.AccessibleButton
 import com.tonytrim.fitover40.ui.components.BigTimer
 import com.tonytrim.fitover40.ui.components.PhaseLabel
 
+@SuppressLint("MissingPermission")
 @Composable
 fun RunningScreen(
     viewModel: RunningViewModel = viewModel()
@@ -109,7 +111,7 @@ fun RunningScreen(
         }
     }
 
-    DisposableEffect(uiState.trackingMode, uiState.isPaused, uiState.phase, hasLocationPermission, hasActivityPermission) {
+    DisposableEffect(uiState.trackingMode, uiState.phase, hasLocationPermission, hasActivityPermission) {
         val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
 
@@ -141,18 +143,24 @@ fun RunningScreen(
             }
         }
 
-        if (trackingActive && uiState.trackingMode == RunningTrackingMode.Outdoor) {
+        if (uiState.trackingMode == RunningTrackingMode.Outdoor && uiState.phase != WorkoutPhase.FINISHED) {
             if (!hasLocationPermission) {
                 viewModel.updateTrackingStatus("Location permission is required for outside tracking.")
             } else {
-                locationListener = LocationListener { location ->
-                    viewModel.onOutdoorLocation(
-                        point = GeoPoint(location.latitude, location.longitude),
-                        accuracyMeters = location.accuracy
-                    )
+                locationListener = object : LocationListener {
+                    override fun onLocationChanged(location: android.location.Location) {
+                        viewModel.onOutdoorLocation(
+                            point = GeoPoint(location.latitude, location.longitude),
+                            accuracyMeters = location.accuracy
+                        )
+                    }
+                    @Deprecated("Deprecated in Java")
+                    override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+                    override fun onProviderEnabled(provider: String) {}
+                    override fun onProviderDisabled(provider: String) {}
                 }
-                val listener = locationListener
-                if (locationManager != null && listener != null) {
+                if (locationManager != null && locationListener != null &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     val isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
                     val isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
 
@@ -161,10 +169,10 @@ fun RunningScreen(
                     } else {
                         runCatching {
                             if (isGpsEnabled) {
-                                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 3f, listener, Looper.getMainLooper())
+                                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 3f, locationListener, Looper.getMainLooper())
                             }
                             if (isNetworkEnabled) {
-                                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2000L, 5f, listener, Looper.getMainLooper())
+                                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2000L, 5f, locationListener, Looper.getMainLooper())
                             }
                         }.onFailure {
                             viewModel.updateTrackingStatus("Unable to start location updates on this device.")
@@ -652,6 +660,18 @@ private fun RouteMapCard(
                     .height(220.dp)
             ) {
                 drawRoundRect(color = mapBackground, size = size)
+
+                // Draw a simple grid to make it look like a map placeholder
+                val gridSpacing = 40.dp.toPx()
+                for (x in 0 until (size.width / gridSpacing).toInt() + 1) {
+                    val xPos = x * gridSpacing
+                    drawLine(color = Color.Black.copy(alpha = 0.05f), start = Offset(xPos, 0f), end = Offset(xPos, size.height), strokeWidth = 1f)
+                }
+                for (y in 0 until (size.height / gridSpacing).toInt() + 1) {
+                    val yPos = y * gridSpacing
+                    drawLine(color = Color.Black.copy(alpha = 0.05f), start = Offset(0f, yPos), end = Offset(size.width, yPos), strokeWidth = 1f)
+                }
+
                 if (routePoints.isEmpty()) {
                     drawCircle(
                         color = if (hasLocationFix) endColor else placeholderColor,

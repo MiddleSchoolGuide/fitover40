@@ -1,5 +1,7 @@
 package com.tonytrim.fitover40.domain.model
 
+import java.io.Serializable
+
 data class RunPlan(
     val id: Long = 0,
     val name: String,
@@ -11,13 +13,13 @@ data class RunPlan(
     val isPreset: Boolean = false,
     val summary: String = "",
     val effortCue: String = ""
-)
+) : Serializable
 
 data class StrengthPlan(
     val id: Long = 0,
     val name: String,
     val exercises: List<ExercisePlan>
-)
+) : Serializable
 
 data class ExercisePlan(
     val name: String,
@@ -32,7 +34,7 @@ data class ExercisePlan(
     val mediaSourceName: String? = null,
     val videoUrl: String? = null,
     val illustration: ExerciseIllustration? = null
-)
+) : Serializable
 
 enum class ExerciseIllustration {
     GluteBridge,
@@ -48,7 +50,7 @@ enum class TrainingLevel(
     val description: String,
     val showsBeginnerMedia: Boolean,
     val estimatedStrideMeters: Double
-) {
+) : Serializable {
     BeginnerFirstTimeEver(
         storageKey = "beginner_first_time_ever",
         displayName = "Beginner (First Time Ever)",
@@ -106,12 +108,12 @@ enum class RunningTrackingMode(val displayName: String) {
 data class GeoPoint(
     val latitude: Double,
     val longitude: Double
-)
+) : Serializable
 
 data class BluetoothTreadmillDevice(
     val name: String,
     val address: String
-)
+) : Serializable
 
 data class WorkoutHistory(
     val id: Long,
@@ -119,4 +121,4 @@ data class WorkoutHistory(
     val type: String, // "RUN" or "STRENGTH"
     val durationMinutes: Int,
     val summary: String
-)
+) : Serializable
