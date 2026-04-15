@@ -68,7 +68,8 @@ import com.tonytrim.fitover40.ui.components.PhaseLabel
 @SuppressLint("MissingPermission")
 @Composable
 fun RunningScreen(
-    viewModel: RunningViewModel = viewModel()
+    viewModel: RunningViewModel = viewModel(),
+    customStrideMeters: Double? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -98,6 +99,10 @@ fun RunningScreen(
         )
     }
 
+    LaunchedEffect(customStrideMeters) {
+        viewModel.setCustomStride(customStrideMeters)
+    }
+
     LaunchedEffect(uiState.phase) {
         if (uiState.phase != WorkoutPhase.WARM_UP && uiState.phase != WorkoutPhase.FINISHED) {
             val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
@@ -110,7 +115,7 @@ fun RunningScreen(
         }
     }
 
-    DisposableEffect(uiState.trackingMode, uiState.phase, hasLocationPermission, hasActivityPermission) {
+    DisposableEffect(uiState.trackingMode, uiState.phase, hasLocationPermission, hasActivityPermission, uiState.connectedTreadmillName, uiState.isPaused) {
         val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
 

@@ -91,6 +91,17 @@ class StrengthViewModel(
         }
     }
 
+    fun skipRest() {
+        restTimerJob?.cancel()
+        _uiState.update {
+            it.copy(
+                isResting = false,
+                restSecondsRemaining = 0,
+                currentSetNumber = it.currentSetNumber + 1
+            )
+        }
+    }
+
     private fun nextExercise() {
         val currentState = _uiState.value
         if (currentState.currentExerciseIndex < currentState.exercises.size - 1) {

@@ -83,6 +83,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val hasOnboarded by onboardingPrefs.hasOnboarded.collectAsState(initial = null)
             val savedLevelKey by onboardingPrefs.selectedTrainingLevel.collectAsState(initial = null)
+            val customStrideCm by onboardingPrefs.customStrideCm.collectAsState(initial = null)
             val authSession by authRepository.session.collectAsState(initial = null)
             val scope = rememberCoroutineScope()
             var authReady by remember { mutableStateOf(false) }
@@ -115,6 +116,10 @@ class MainActivity : ComponentActivity() {
                         signedInName = authSession?.displayName,
                         hasOnboardedInitially = hasOnboarded == true,
                         initialTrainingLevel = TrainingLevel.fromStorageKey(savedLevelKey),
+                        customStrideCm = customStrideCm,
+                        onStrideChanged = { cm ->
+                            scope.launch { onboardingPrefs.saveCustomStrideCm(cm) }
+                        },
                         onOnboardingComplete = { level ->
                             scope.launch {
                                 onboardingPrefs.saveOnboardingComplete(level.storageKey)
@@ -148,6 +153,8 @@ fun MainScreen(
     signedInName: String?,
     hasOnboardedInitially: Boolean,
     initialTrainingLevel: TrainingLevel?,
+    customStrideCm: Int?,
+    onStrideChanged: (Int) -> Unit,
     onOnboardingComplete: (TrainingLevel) -> Unit,
     onClearAllData: () -> Unit,
     onSignOut: () -> Unit
@@ -266,6 +273,8 @@ fun MainScreen(
                 onUnitsToggled = { useMetricUnits = it },
                 defaultRestSeconds = defaultRestSeconds,
                 onRestSecondsChanged = { defaultRestSeconds = it },
+                customStrideCm = customStrideCm,
+                onStrideChanged = onStrideChanged,
                 onClearAllData = {
                     onClearAllData()
                     hasOnboarded = false
@@ -293,6 +302,8 @@ fun NavHostWithManualInjection(
     onUnitsToggled: (Boolean) -> Unit,
     defaultRestSeconds: Int,
     onRestSecondsChanged: (Int) -> Unit,
+    customStrideCm: Int?,
+    onStrideChanged: (Int) -> Unit,
     onClearAllData: () -> Unit,
     onSignOut: () -> Unit,
     onTrainingLevelChanged: (TrainingLevel) -> Unit
@@ -343,7 +354,10 @@ fun NavHostWithManualInjection(
                     ) as T
                 }
             }
-            RunningScreen(viewModel(key = "running-${trainingLevel.storageKey}", factory = factory))
+            RunningScreen(
+                viewModel = viewModel(key = "running-${trainingLevel.storageKey}", factory = factory),
+                customStrideMeters = customStrideCm?.div(100.0)
+            )
         }
         composable(Screen.Strength.route) {
             val factory = object : ViewModelProvider.Factory {
@@ -381,6 +395,8 @@ fun NavHostWithManualInjection(
                 onUnitsToggled = onUnitsToggled,
                 defaultRestSeconds = defaultRestSeconds,
                 onRestSecondsChanged = onRestSecondsChanged,
+                customStrideCm = customStrideCm,
+                onStrideChanged = onStrideChanged,
                 onClearHistory = onClearAllData,
                 onSignOut = onSignOut,
                 onPrivacyPolicyClick = { navController.navigate("privacy_policy") },

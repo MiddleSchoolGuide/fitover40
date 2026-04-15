@@ -153,6 +153,10 @@ fun StrengthScreen(
                                 text = "Keep your breathing steady and review the form cues before the next set.",
                                 style = MaterialTheme.typography.bodyLarge
                             )
+                            AccessibleButton(
+                                onClick = { viewModel.skipRest() },
+                                text = "Skip Rest"
+                            )
                         }
                     }
                 } else {

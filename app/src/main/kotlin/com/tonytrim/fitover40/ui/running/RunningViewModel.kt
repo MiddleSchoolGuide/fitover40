@@ -63,6 +63,11 @@ class RunningViewModel(
     private var timerJob: Job? = null
     private var currentPlan: RunPlan? = null
     private var lastFtmsSampleTimestampMs: Long? = null
+    private var overrideStride: Double? = null
+
+    fun setCustomStride(meters: Double?) {
+        overrideStride = meters
+    }
 
     init {
         currentPlan = TrainingPrograms.runningPlan(trainingLevel)
@@ -187,26 +192,28 @@ class RunningViewModel(
         if (state.trackingMode == RunningTrackingMode.Treadmill && state.connectedTreadmillName != null) return
         if (state.isPaused || state.phase == WorkoutPhase.FINISHED) return
 
-        val stride = trainingLevel.estimatedStrideMeters
+        val stride = overrideStride ?: trainingLevel.estimatedStrideMeters
         _uiState.update {
             val nextSteps = it.capturedSteps + 1
-            val nextDistance = if (it.trackingMode == RunningTrackingMode.Treadmill) {
-                nextSteps * stride
-            } else {
-                it.distanceMeters
+            val isTreadmill = it.trackingMode == RunningTrackingMode.Treadmill
+            val outdoorNoGps = it.trackingMode == RunningTrackingMode.Outdoor && !it.hasLocationFix
+            val nextDistance = when {
+                isTreadmill -> nextSteps * stride
+                outdoorNoGps -> nextSteps * stride
+                else -> it.distanceMeters
             }
             it.copy(
                 capturedSteps = nextSteps,
                 distanceMeters = nextDistance,
-                currentLocationLabel = if (it.trackingMode == RunningTrackingMode.Treadmill) {
-                    "${nextSteps} steps captured"
-                } else {
-                    it.currentLocationLabel
+                currentLocationLabel = when {
+                    isTreadmill -> "${nextSteps} steps captured"
+                    outdoorNoGps -> "${nextSteps} steps (no GPS yet)"
+                    else -> it.currentLocationLabel
                 },
-                trackingStatus = if (it.trackingMode == RunningTrackingMode.Treadmill) {
-                    "Distance estimate uses ${"%.2f".format(Locale.US, stride)} m stride length for ${trainingLevel.displayName}."
-                } else {
-                    it.trackingStatus
+                trackingStatus = when {
+                    isTreadmill -> "Distance estimate uses ${"%.2f".format(Locale.US, stride)} m stride length for ${trainingLevel.displayName}."
+                    outdoorNoGps -> "No GPS fix yet — estimating from steps (${"%.2f".format(Locale.US, stride)} m stride). Distance will switch to GPS once acquired."
+                    else -> it.trackingStatus
                 }
             )
         }
@@ -290,20 +297,24 @@ class RunningViewModel(
 
     private fun tick() {
         val currentState = _uiState.value
-        if (currentState.secondsRemaining > 0) {
-            _uiState.update {
-                it.copy(
-                    secondsRemaining = it.secondsRemaining - 1,
-                    totalSecondsElapsed = it.totalSecondsElapsed + 1,
-                    workoutProgress = calculateProgress(
-                        currentSet = it.currentSet,
-                        totalSets = it.totalSets,
-                        phase = it.phase
-                    )
+        if (currentState.secondsRemaining <= 0) {
+            nextPhase()
+            return
+        }
+        val nextRemaining = currentState.secondsRemaining - 1
+        _uiState.update {
+            it.copy(
+                secondsRemaining = nextRemaining,
+                totalSecondsElapsed = it.totalSecondsElapsed + 1,
+                workoutProgress = calculateProgress(
+                    currentSet = it.currentSet,
+                    totalSets = it.totalSets,
+                    phase = it.phase
                 )
-            }
-            persistUiState()
-        } else {
+            )
+        }
+        persistUiState()
+        if (nextRemaining == 0) {
             nextPhase()
         }
     }
@@ -345,7 +356,21 @@ class RunningViewModel(
                     date = System.currentTimeMillis(),
                     durationSeconds = currentState.totalSecondsElapsed,
                     intervalsCompleted = currentState.currentSet,
-                    estimatedCalories = (currentState.totalSecondsElapsed / 60) * 7,
+                    estimatedCalories = run {
+                        val plan = currentPlan
+                        if (plan != null) {
+                            // Phase-based MET estimate (~70 kg reference weight):
+                            //   Running   ~10 cal/min  (MET 8-9)
+                            //   Walking    ~5 cal/min  (MET 3.5)
+                            //   Warm-up/cool-down ~5 cal/min
+                            val runMins = plan.sets * plan.runSeconds / 60.0
+                            val walkMins = plan.sets * plan.walkSeconds / 60.0
+                            val warmCoolMins = (plan.warmUpMinutes + plan.coolDownMinutes).toDouble()
+                            (runMins * 10.0 + walkMins * 5.0 + warmCoolMins * 5.0).toInt().coerceAtLeast(1)
+                        } else {
+                            (currentState.totalSecondsElapsed / 60.0 * 7.0).toInt().coerceAtLeast(1)
+                        }
+                    },
                     planName = currentPlan?.name ?: "Custom Run",
                     trackingMode = currentState.connectedTreadmillName?.let { "Bluetooth FTMS" } ?: currentState.trackingMode.displayName,
                     distanceMeters = currentState.distanceMeters
@@ -404,7 +429,7 @@ class RunningViewModel(
             secondsRemaining = savedStateHandle.get<Int>("seconds") ?: plan.warmUpMinutes * 60,
             currentSet = savedStateHandle.get<Int>("currentSet") ?: 1,
             totalSets = savedStateHandle.get<Int>("totalSets") ?: plan.sets,
-            isPaused = savedStateHandle.get<Boolean>("isPaused") ?: true,
+            isPaused = true, // Always restore paused; user must explicitly resume after process death
             totalSecondsElapsed = savedStateHandle.get<Int>("totalSecondsElapsed") ?: 0,
             distanceMeters = savedStateHandle.get<Double>("distanceMeters") ?: 0.0,
             routePoints = savedStateHandle.get<List<GeoPoint>>("routePoints") ?: emptyList(),

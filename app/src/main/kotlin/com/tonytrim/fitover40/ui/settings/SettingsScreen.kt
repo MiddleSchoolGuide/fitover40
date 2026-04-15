@@ -30,6 +30,8 @@ fun SettingsScreen(
     onUnitsToggled: (Boolean) -> Unit,
     defaultRestSeconds: Int,
     onRestSecondsChanged: (Int) -> Unit,
+    customStrideCm: Int?,
+    onStrideChanged: (Int) -> Unit,
     onClearHistory: () -> Unit,
     onSignOut: () -> Unit,
     onPrivacyPolicyClick: () -> Unit,
@@ -138,6 +140,18 @@ fun SettingsScreen(
                         value = defaultRestSeconds,
                         onDecrement = { if (defaultRestSeconds > 15) onRestSecondsChanged(defaultRestSeconds - 5) },
                         onIncrement = { onRestSecondsChanged(defaultRestSeconds + 5) }
+                    )
+
+                    SettingsDivider()
+
+                    val effectiveStrideCm = customStrideCm ?: (selectedLevel.estimatedStrideMeters * 100).toInt()
+                    SettingsStepperRow(
+                        title = "Stride length",
+                        subtitle = "Used for treadmill step tracking. Default for ${selectedLevel.displayName} is ${"%.2f".format(selectedLevel.estimatedStrideMeters)} m.",
+                        value = effectiveStrideCm,
+                        valueLabel = "${"%.2f".format(effectiveStrideCm / 100.0)} m",
+                        onDecrement = { if (effectiveStrideCm > 50) onStrideChanged(effectiveStrideCm - 1) },
+                        onIncrement = { if (effectiveStrideCm < 120) onStrideChanged(effectiveStrideCm + 1) }
                     )
 
                     SettingsDivider()
@@ -324,6 +338,7 @@ private fun SettingsStepperRow(
     title: String,
     subtitle: String,
     value: Int,
+    valueLabel: String = value.toString(),
     onDecrement: () -> Unit,
     onIncrement: () -> Unit
 ) {
@@ -341,15 +356,15 @@ private fun SettingsStepperRow(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 FilledTonalIconButton(onClick = onDecrement) {
-                    Icon(Icons.Default.Remove, contentDescription = "Decrease rest time")
+                    Icon(Icons.Default.Remove, contentDescription = "Decrease")
                 }
                 Text(
-                    text = value.toString(),
+                    text = valueLabel,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(horizontal = 4.dp)
                 )
                 FilledTonalIconButton(onClick = onIncrement) {
-                    Icon(Icons.Default.Add, contentDescription = "Increase rest time")
+                    Icon(Icons.Default.Add, contentDescription = "Increase")
                 }
             }
         },
