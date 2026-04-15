@@ -40,7 +40,7 @@ data class RunningUiState(
     val totalSecondsElapsed: Int = 0,
     val distanceMeters: Double = 0.0,
     val routePoints: List<GeoPoint> = emptyList(),
-    val treadmillSteps: Int = 0,
+    val capturedSteps: Int = 0,
     val discoveredTreadmills: List<BluetoothTreadmillDevice> = emptyList(),
     val isBleScanning: Boolean = false,
     val connectedTreadmillName: String? = null,
@@ -81,7 +81,7 @@ class RunningViewModel(
                 trackingMode = mode,
                 distanceMeters = 0.0,
                 routePoints = emptyList(),
-                treadmillSteps = 0,
+                capturedSteps = 0,
                 ftmsSpeedKph = 0.0,
                 currentLocationLabel = if (mode == RunningTrackingMode.Outdoor) {
                     "Waiting for GPS signal"
@@ -132,7 +132,7 @@ class RunningViewModel(
         _uiState.update {
             it.copy(
                 connectedTreadmillName = deviceName,
-                treadmillSteps = 0,
+                capturedSteps = 0,
                 trackingStatus = "Connected to $deviceName. FTMS speed data will drive treadmill distance.",
                 ftmsDiagnostics = (listOf("Connected to $deviceName") + it.ftmsDiagnostics).distinct().take(6),
                 currentLocationLabel = "$deviceName • 0.0 km/h"
@@ -182,20 +182,32 @@ class RunningViewModel(
         persistUiState()
     }
 
-    fun onTreadmillStep() {
+    fun onStepCaptured() {
         val state = _uiState.value
-        if (state.connectedTreadmillName != null) return
-        if (state.trackingMode != RunningTrackingMode.Treadmill || state.isPaused || state.phase == WorkoutPhase.FINISHED) return
+        if (state.trackingMode == RunningTrackingMode.Treadmill && state.connectedTreadmillName != null) return
+        if (state.isPaused || state.phase == WorkoutPhase.FINISHED) return
 
         val stride = trainingLevel.estimatedStrideMeters
         _uiState.update {
-            val nextSteps = it.treadmillSteps + 1
-            val nextDistance = nextSteps * stride
+            val nextSteps = it.capturedSteps + 1
+            val nextDistance = if (it.trackingMode == RunningTrackingMode.Treadmill) {
+                nextSteps * stride
+            } else {
+                it.distanceMeters
+            }
             it.copy(
-                treadmillSteps = nextSteps,
+                capturedSteps = nextSteps,
                 distanceMeters = nextDistance,
-                currentLocationLabel = "${nextSteps} steps captured",
-                trackingStatus = "Distance estimate uses ${"%.2f".format(Locale.US, stride)} m stride length for ${trainingLevel.displayName}."
+                currentLocationLabel = if (it.trackingMode == RunningTrackingMode.Treadmill) {
+                    "${nextSteps} steps captured"
+                } else {
+                    it.currentLocationLabel
+                },
+                trackingStatus = if (it.trackingMode == RunningTrackingMode.Treadmill) {
+                    "Distance estimate uses ${"%.2f".format(Locale.US, stride)} m stride length for ${trainingLevel.displayName}."
+                } else {
+                    it.trackingStatus
+                }
             )
         }
         persistUiState()
@@ -396,7 +408,7 @@ class RunningViewModel(
             totalSecondsElapsed = savedStateHandle.get<Int>("totalSecondsElapsed") ?: 0,
             distanceMeters = savedStateHandle.get<Double>("distanceMeters") ?: 0.0,
             routePoints = savedStateHandle.get<List<GeoPoint>>("routePoints") ?: emptyList(),
-            treadmillSteps = savedStateHandle.get<Int>("treadmillSteps") ?: 0,
+            capturedSteps = savedStateHandle.get<Int>("capturedSteps") ?: 0,
             connectedTreadmillName = savedStateHandle.get<String>("connectedTreadmillName"),
             ftmsSpeedKph = savedStateHandle.get<Double>("ftmsSpeedKph") ?: 0.0,
             currentLocationLabel = savedStateHandle.get<String>("currentLocationLabel")
@@ -419,7 +431,7 @@ class RunningViewModel(
         savedStateHandle["trackingMode"] = state.trackingMode
         savedStateHandle["distanceMeters"] = state.distanceMeters
         savedStateHandle["routePoints"] = ArrayList(state.routePoints)
-        savedStateHandle["treadmillSteps"] = state.treadmillSteps
+        savedStateHandle["capturedSteps"] = state.capturedSteps
         savedStateHandle["connectedTreadmillName"] = state.connectedTreadmillName
         savedStateHandle["ftmsSpeedKph"] = state.ftmsSpeedKph
         savedStateHandle["currentLocationLabel"] = state.currentLocationLabel

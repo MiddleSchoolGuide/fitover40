@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
@@ -119,10 +118,13 @@ fun RunningScreen(
         var locationListener: LocationListener? = null
 
         val trackingActive = !uiState.isPaused && uiState.phase != WorkoutPhase.FINISHED
+        val treadmillFallbackActive = uiState.trackingMode == RunningTrackingMode.Treadmill && uiState.connectedTreadmillName == null
+        val outdoorActive = uiState.trackingMode == RunningTrackingMode.Outdoor
 
-        if (trackingActive && uiState.trackingMode == RunningTrackingMode.Treadmill && uiState.connectedTreadmillName == null) {
+        if (trackingActive && (treadmillFallbackActive || outdoorActive)) {
             if (!hasActivityPermission) {
-                viewModel.updateTrackingStatus("Motion permission is required for treadmill fallback tracking.")
+                val message = if (outdoorActive) "Motion permission is required to count steps in outside mode." else "Motion permission is required for treadmill fallback tracking."
+                viewModel.updateTrackingStatus(message)
             } else {
                 val stepDetector = sensorManager?.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR)
                 if (stepDetector != null) {
@@ -130,7 +132,7 @@ fun RunningScreen(
                         override fun onSensorChanged(event: SensorEvent?) {
                             if (event?.sensor?.type == Sensor.TYPE_STEP_DETECTOR) {
                                 val steps = event.values.firstOrNull()?.toInt() ?: 1
-                                repeat(steps.coerceAtLeast(1)) { viewModel.onTreadmillStep() }
+                                repeat(steps.coerceAtLeast(1)) { viewModel.onStepCaptured() }
                             }
                         }
 
@@ -138,7 +140,8 @@ fun RunningScreen(
                     }
                     sensorManager.registerListener(sensorListener, stepDetector, SensorManager.SENSOR_DELAY_NORMAL)
                 } else {
-                    viewModel.updateTrackingStatus("This device does not expose a step detector sensor for treadmill fallback tracking.")
+                    val message = if (outdoorActive) "This device does not expose a step detector sensor for outside step counting." else "This device does not expose a step detector sensor for treadmill fallback tracking."
+                    viewModel.updateTrackingStatus(message)
                 }
             }
         }
@@ -220,10 +223,20 @@ fun RunningScreen(
                     onSelected = { mode ->
                         viewModel.setTrackingMode(mode)
                         when (mode) {
-                            RunningTrackingMode.Outdoor -> if (!hasLocationPermission) {
-                                permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                            RunningTrackingMode.Outdoor -> {
+                                val permissions = mutableListOf<String>()
+                                if (!hasLocationPermission) {
+                                    permissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
+                                    permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+                                }
+                                if (!hasActivityPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                    permissions.add(Manifest.permission.ACTIVITY_RECOGNITION)
+                                }
+                                if (permissions.isNotEmpty()) {
+                                    permissionLauncher.launch(permissions.toTypedArray())
+                                }
                             }
-                            RunningTrackingMode.Treadmill -> if (!hasActivityPermission) {
+                            RunningTrackingMode.Treadmill -> if (!hasActivityPermission && uiState.connectedTreadmillName == null) {
                                 permissionLauncher.launch(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION))
                             }
                         }
@@ -299,11 +312,11 @@ fun RunningScreen(
                 ) {
                     MetricCard("Mode", uiState.connectedTreadmillName?.let { "Bluetooth FTMS" } ?: uiState.trackingMode.displayName, Modifier.weight(1f))
                     MetricCard(
-                        if (uiState.trackingMode == RunningTrackingMode.Treadmill) "Speed" else "Location",
-                        if (uiState.trackingMode == RunningTrackingMode.Treadmill) {
-                            if (uiState.connectedTreadmillName != null) "${"%.1f".format(uiState.ftmsSpeedKph)} km/h" else "${uiState.treadmillSteps} steps"
+                        if (uiState.connectedTreadmillName != null) "Speed" else "Steps",
+                        if (uiState.connectedTreadmillName != null) {
+                            "${"%.1f".format(uiState.ftmsSpeedKph)} km/h"
                         } else {
-                            if (uiState.hasLocationFix) "Locked" else "Searching"
+                            "${uiState.capturedSteps}"
                         },
                         Modifier.weight(1f)
                     )
