@@ -1,6 +1,6 @@
 # Privacy Policy for FitOver40
 
-**Effective Date: March 31, 2026**
+**Effective Date: April 16, 2026**
 
 FitOver40 ("we", "us", or "our") is committed to protecting your privacy. This Privacy Policy explains how we handle your information when you use the FitOver40 mobile application.
 
@@ -28,4 +28,4 @@ We may update our Privacy Policy from time to time. We will notify you of any ch
 ## Contact Us
 If you have any questions about this Privacy Policy, please contact us at:
 
-**Email:** [privacy@tonytrim.com](mailto:privacy@tonytrim.com)
+**Email:** [furbert.trim@gmail.com](mailto:furbert.trim@gmail.com)

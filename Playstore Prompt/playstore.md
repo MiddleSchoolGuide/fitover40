@@ -110,7 +110,7 @@ Generate a complete plain-English privacy policy text covering:
   no data sent to servers, no analytics, no ads
 - Data deletion: user can clear all data from within the app
   (add a "Clear All Data" option in Settings screen)
-- Contact email placeholder: privacy@tonytrim.com
+- Contact email placeholder: furbert.trim@gmail.com
 - Effective date: [today's date]
 
 Also create a PrivacyPolicyScreen.kt Composable that:

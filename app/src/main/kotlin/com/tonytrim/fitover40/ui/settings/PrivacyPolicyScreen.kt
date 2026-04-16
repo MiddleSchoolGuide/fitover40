@@ -39,7 +39,7 @@ fun PrivacyPolicyScreen(onBack: () -> Unit) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Effective Date: March 31, 2026",
+                    text = "Effective Date: April 16, 2026",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -69,7 +69,7 @@ fun PrivacyPolicyScreen(onBack: () -> Unit) {
             item {
                 PolicySection(
                     title = "Contact",
-                    content = "If you have any questions about this policy, please contact us at privacy@tonytrim.com"
+                    content = "If you have any questions about this policy, please contact us at furbert.trim@gmail.com"
                 )
             }
         }
