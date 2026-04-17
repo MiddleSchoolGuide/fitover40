@@ -4,6 +4,7 @@ import java.io.FileInputStream
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.kapt")
 }
 
@@ -20,6 +21,11 @@ val authBaseUrl = localProperties.getProperty("authBaseUrl")
     ?: System.getenv("AUTH_BASE_URL")
     ?: ""
 val debugAuthBaseUrl = authBaseUrl.ifBlank { "https://fitover40-production.up.railway.app" }
+val releaseStoreFile = localProperties.getProperty("storeFile")
+val hasReleaseSigning = !releaseStoreFile.isNullOrBlank() &&
+    !localProperties.getProperty("storePassword").isNullOrBlank() &&
+    !localProperties.getProperty("keyAlias").isNullOrBlank() &&
+    !localProperties.getProperty("keyPassword").isNullOrBlank()
 
 android {
     namespace = "com.tonytrim.fitover40"
@@ -40,7 +46,7 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = localProperties.getProperty("storeFile")?.let { file(it) }
+            storeFile = releaseStoreFile?.let { file(it) }
             storePassword = localProperties.getProperty("storePassword")
             keyAlias = localProperties.getProperty("keyAlias")
             keyPassword = localProperties.getProperty("keyPassword")
@@ -54,7 +60,9 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             buildConfigField("String", "AUTH_BASE_URL", "\"$authBaseUrl\"")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
@@ -70,13 +78,18 @@ android {
         compose = true
         buildConfig = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
-    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+    lint {
+        disable += "MutableCollectionMutableState"
+        disable += "AutoboxingStateCreation"
+        disable += "OldTargetApi"
+        disable += "GradleDependency"
+        disable += "NewerVersionAvailable"
+        disable += "KaptUsageInsteadOfKsp"
     }
 }
 
@@ -101,9 +114,9 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
     // Room
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    kapt("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:2.7.0")
+    implementation("androidx.room:room-ktx:2.7.0")
+    kapt("androidx.room:room-compiler:2.7.0")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 

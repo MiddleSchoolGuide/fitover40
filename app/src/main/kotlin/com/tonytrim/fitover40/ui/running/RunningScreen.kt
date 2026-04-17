@@ -64,6 +64,7 @@ import com.tonytrim.fitover40.domain.model.RunningTrackingMode
 import com.tonytrim.fitover40.ui.components.AccessibleButton
 import com.tonytrim.fitover40.ui.components.BigTimer
 import com.tonytrim.fitover40.ui.components.PhaseLabel
+import java.util.Locale
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -105,13 +106,8 @@ fun RunningScreen(
 
     LaunchedEffect(uiState.phase) {
         if (uiState.phase != WorkoutPhase.WARM_UP && uiState.phase != WorkoutPhase.FINISHED) {
-            val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator?.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator?.vibrate(500)
-            }
+            val vibrator = ContextCompat.getSystemService(context, Vibrator::class.java)
+            vibrator?.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
         }
     }
 
@@ -234,7 +230,7 @@ fun RunningScreen(
                                     permissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
                                     permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION)
                                 }
-                                if (!hasActivityPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                if (!hasActivityPermission) {
                                     permissions.add(Manifest.permission.ACTIVITY_RECOGNITION)
                                 }
                                 if (permissions.isNotEmpty()) {
@@ -242,7 +238,10 @@ fun RunningScreen(
                                 }
                             }
                             RunningTrackingMode.Treadmill -> if (!hasActivityPermission && uiState.connectedTreadmillName == null) {
-                                permissionLauncher.launch(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION))
+                                val permissions = activityRecognitionPermissions()
+                                if (permissions.isNotEmpty()) {
+                                    permissionLauncher.launch(permissions)
+                                }
                             }
                         }
                     }
@@ -319,7 +318,7 @@ fun RunningScreen(
                     MetricCard(
                         if (uiState.connectedTreadmillName != null) "Speed" else "Steps",
                         if (uiState.connectedTreadmillName != null) {
-                            "${"%.1f".format(uiState.ftmsSpeedKph)} km/h"
+                            "${"%.1f".format(Locale.US, uiState.ftmsSpeedKph)} km/h"
                         } else {
                             "${uiState.capturedSteps}"
                         },
@@ -353,7 +352,12 @@ fun RunningScreen(
                         uiState = uiState,
                         hasActivityPermission = hasActivityPermission,
                         hasBlePermission = hasBlePermission,
-                        onRequestActivityPermission = { permissionLauncher.launch(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION)) },
+                        onRequestActivityPermission = {
+                            val permissions = activityRecognitionPermissions()
+                            if (permissions.isNotEmpty()) {
+                                permissionLauncher.launch(permissions)
+                            }
+                        },
                         onRequestBlePermission = { permissionLauncher.launch(bluetoothPermissions()) },
                         onStartScan = {
                             if (!hasBlePermission) permissionLauncher.launch(bluetoothPermissions()) else ftmsController.startScan()
@@ -766,11 +770,11 @@ private fun MetricCard(title: String, value: String, modifier: Modifier = Modifi
 private fun formatElapsed(totalSeconds: Int): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    return String.format("%02d:%02d", minutes, seconds)
+    return String.format(Locale.US, "%02d:%02d", minutes, seconds)
 }
 
 private fun formatDistance(distanceMeters: Double): String =
-    if (distanceMeters >= 1000) String.format("%.2f km", distanceMeters / 1000.0) else "${distanceMeters.toInt()} m"
+    if (distanceMeters >= 1000) String.format(Locale.US, "%.2f km", distanceMeters / 1000.0) else "${distanceMeters.toInt()} m"
 
 private fun hasLocationPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
@@ -791,6 +795,13 @@ private fun hasBluetoothPermission(context: Context): Boolean =
 private fun bluetoothPermissions(): Array<String> =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
+    } else {
+        emptyArray()
+    }
+
+private fun activityRecognitionPermissions(): Array<String> =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        arrayOf(Manifest.permission.ACTIVITY_RECOGNITION)
     } else {
         emptyArray()
     }

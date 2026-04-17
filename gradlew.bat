@@ -38,6 +38,13 @@ for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
 @rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 
+if defined JAVA_HOME (
+    set JAVA_HOME=%JAVA_HOME:"=%
+    if not exist "%JAVA_HOME%\lib\jvm.cfg" set "JAVA_HOME="
+)
+
+if not defined JAVA_HOME call :findJavaFromUserJdks
+
 @rem Find java.exe
 if defined JAVA_HOME goto findJavaFromJavaHome
 
@@ -54,7 +61,6 @@ echo location of your Java installation. 1>&2
 goto fail
 
 :findJavaFromJavaHome
-set JAVA_HOME=%JAVA_HOME:"=%
 set JAVA_EXE=%JAVA_HOME%/bin/java.exe
 
 if exist "%JAVA_EXE%" goto execute
@@ -67,14 +73,22 @@ echo location of your Java installation. 1>&2
 
 goto fail
 
+:findJavaFromUserJdks
+for /f "delims=" %%i in ('dir /b /ad /o-n "%USERPROFILE%\.jdks" 2^>NUL') do (
+    if exist "%USERPROFILE%\.jdks\%%i\bin\java.exe" (
+        set "JAVA_HOME=%USERPROFILE%\.jdks\%%i"
+        goto :eof
+    )
+)
+goto :eof
+
 :execute
 @rem Setup the command line
 
-set CLASSPATH=
 
 
 @rem Execute Gradle
-"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" -jar "%APP_HOME%\gradle\wrapper\gradle-wrapper.jar" %*
+"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -jar "%APP_HOME%\gradle\wrapper\gradle-wrapper.jar" %*
 
 :end
 @rem End local scope for the variables with windows NT shell

@@ -12,6 +12,7 @@ import com.tonytrim.fitover40.ui.running.WorkoutPhase
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.Locale
 
 class WorkoutTimerService : Service() {
 
@@ -56,7 +57,7 @@ class WorkoutTimerService : Service() {
 
     private fun startForegroundService() {
         val notification = createNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
         } else {
             startForeground(NOTIFICATION_ID, notification)
@@ -105,7 +106,7 @@ class WorkoutTimerService : Service() {
             WorkoutPhase.FINISHED -> "Finished"
         }
 
-        val timeText = String.format("%02d:%02d", _secondsRemaining.value / 60, _secondsRemaining.value % 60)
+        val timeText = String.format(Locale.US, "%02d:%02d", _secondsRemaining.value / 60, _secondsRemaining.value % 60)
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_media_play) // Replace with app icon later
@@ -143,18 +144,16 @@ class WorkoutTimerService : Service() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Workout Timer",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Shows active workout progress"
-                setShowBadge(false)
-            }
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "Workout Timer",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Shows active workout progress"
+            setShowBadge(false)
         }
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(channel)
     }
 
     override fun onDestroy() {

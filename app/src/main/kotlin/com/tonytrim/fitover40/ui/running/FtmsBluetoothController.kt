@@ -1,6 +1,7 @@
 package com.tonytrim.fitover40.ui.running
 
 import android.annotation.SuppressLint
+import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
@@ -14,7 +15,10 @@ import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.ParcelUuid
+import androidx.core.content.ContextCompat
 import com.tonytrim.fitover40.domain.model.BluetoothTreadmillDevice
 import java.util.UUID
 
@@ -62,9 +66,15 @@ class FtmsBluetoothController(
                 currentGatt = gatt
                 onConnected(deviceName(gatt.device))
                 onStatus("Connected to ${deviceName(gatt.device)}. Discovering FTMS services.")
-                gatt.discoverServices()
+                if (!hasBluetoothConnectPermission()) {
+                    onStatus("Bluetooth permission missing. Unable to discover treadmill services.")
+                    return
+                }
+                discoverServices(gatt)
             } else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
-                gatt.close()
+                if (hasBluetoothConnectPermission()) {
+                    closeGatt(gatt)
+                }
                 if (currentGatt == gatt) currentGatt = null
                 onDisconnected()
             }
@@ -75,7 +85,9 @@ class FtmsBluetoothController(
             val treadmillData = service?.getCharacteristic(TREADMILL_DATA_UUID)
             if (service == null || treadmillData == null) {
                 onStatus("Connected device does not expose FTMS treadmill data.")
-                gatt.disconnect()
+                if (hasBluetoothConnectPermission()) {
+                    disconnectGatt(gatt)
+                }
                 return
             }
             enableNotifications(gatt, treadmillData)
@@ -188,5 +200,25 @@ class FtmsBluetoothController(
         if (value == null || value.size < 4) return null
         val instantaneousSpeedRaw = (value[2].toInt() and 0xFF) or ((value[3].toInt() and 0xFF) shl 8)
         return instantaneousSpeedRaw / 100.0
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun discoverServices(gatt: BluetoothGatt) {
+        gatt.discoverServices()
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun closeGatt(gatt: BluetoothGatt) {
+        gatt.close()
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun disconnectGatt(gatt: BluetoothGatt) {
+        gatt.disconnect()
+    }
+
+    private fun hasBluetoothConnectPermission(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            ContextCompat.checkSelfPermission(appContext, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
     }
 }

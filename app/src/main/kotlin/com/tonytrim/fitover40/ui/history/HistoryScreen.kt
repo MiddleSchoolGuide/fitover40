@@ -256,7 +256,7 @@ fun WorkoutHistoryCard(
 
 private fun formatDistance(distanceMeters: Double): String =
     if (distanceMeters >= 1000) {
-        String.format("%.2f km", distanceMeters / 1000.0)
+        String.format(Locale.US, "%.2f km", distanceMeters / 1000.0)
     } else {
         "${distanceMeters.toInt()} m"
     }

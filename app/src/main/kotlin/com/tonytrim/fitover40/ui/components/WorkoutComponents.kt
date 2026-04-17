@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
+import java.util.Locale
 
 @Composable
 fun BigTimer(
@@ -27,7 +28,7 @@ fun BigTimer(
 ) {
     val minutes = secondsRemaining / 60
     val seconds = secondsRemaining % 60
-    val timeText = String.format("%02d:%02d", minutes, seconds)
+    val timeText = String.format(Locale.US, "%02d:%02d", minutes, seconds)
 
     Text(
         text = timeText,
